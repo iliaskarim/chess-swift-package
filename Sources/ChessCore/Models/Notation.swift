@@ -2,50 +2,55 @@
 // MARK: - Notation
 
 enum Notation {
-  struct Gameplay {
-    enum Play {
-      enum Castle {
-        case long
-        case short
-      }
-
-      case castle(castle: Castle)
-      case translation(disambiguationFile: Square.File?, disambiguationRank: Square.Rank?, figure: Piece.Figure,
-                       isCapture: Bool, promotion: Piece.Figure?, targetSquare: Square)
+  enum Play {
+    enum Castle {
+      case long
+      case short
     }
 
-    enum Punctuation: String {
-      case check = "+"
-      case checkmate = "#"
+    case castle(castle: Castle)
+    case translation(disambiguationFile: Square.File?, disambiguationRank: Square.Rank?, figure: Piece.Figure,
+                     isCapture: Bool, promotion: Piece.Figure?, targetSquare: Square)
+  }
 
-      fileprivate init?(_ character: Character) {
-        self.init(rawValue: String(character))
-      }
+  enum Punctuation: String {
+    case check = "+"
+    case checkmate = "#"
+
+    fileprivate init?(_ character: Character) {
+      self.init(rawValue: String(character))
     }
+  }
 
-    let play: Play
-    let punctuation: Punctuation?
+  case end(victor: Piece.Color?)
+  case play(_ play: Play, punctuation: Punctuation?)
 
-    init(play: Play, punctuation: Punctuation?) {
-      self.play = play
-      self.punctuation = punctuation
-    }
+  init?(string: String) {
+    switch string {
+    case .whiteVictory:
+      self = .end(victor: .white)
 
-    fileprivate init?(_ string: String) {
+    case .blackVictory:
+      self = .end(victor: .black)
+
+    case .draw:
+      self = .end(victor: nil)
+
+    default:
       var string = string
 
-      punctuation = string.last.map(Punctuation.init) ?? nil
+      let punctuation = string.last.map(Punctuation.init) ?? nil
       if punctuation != nil {
         string = String(string.dropLast())
       }
 
       switch string {
       case .castleLong:
-        play = .castle(castle: .long)
-
+        self = .play(.castle(castle: .long), punctuation: punctuation)
+        
       case .castleShort:
-        play = .castle(castle: .short)
-
+        self = .play(.castle(castle: .short), punctuation: punctuation)
+        
       default:
         let figure = (string.first.map(Piece.Figure.init) ?? nil) ?? .pawn
         if figure != .pawn {
@@ -54,7 +59,7 @@ enum Notation {
 
         let isCapture = string.contains(String.capture)
         string = string.replacingOccurrences(of: String.capture, with: "")
-
+        
         let promotion = string.last.map(Piece.Figure.init) ?? nil
         if promotion != nil {
           string = String(string.dropLast())
@@ -98,31 +103,9 @@ enum Notation {
           return nil
         }
 
-        play = .translation(disambiguationFile: disambiguationFile, disambiguationRank: disambiguationRank, figure: figure,
-                            isCapture: isCapture, promotion: promotion, targetSquare: targetSquare)
+        self = .play(.translation(disambiguationFile: disambiguationFile, disambiguationRank: disambiguationRank, figure: figure,
+                            isCapture: isCapture, promotion: promotion, targetSquare: targetSquare), punctuation: punctuation)
       }
-    }
-  }
-
-  case end(victor: Piece.Color?)
-  case gameplay(_ gameplay: Gameplay)
-
-  init?(string: String) {
-    switch string {
-    case .whiteVictory:
-      self = .end(victor: .white)
-
-    case .blackVictory:
-      self = .end(victor: .black)
-
-    case .draw:
-      self = .end(victor: nil)
-
-    default:
-      guard let gameplay = Gameplay(string) else {
-        return nil
-      }
-      self = .gameplay(gameplay)
     }
   }
 }

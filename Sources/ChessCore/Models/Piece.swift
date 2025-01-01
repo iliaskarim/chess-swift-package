@@ -32,15 +32,3 @@ public struct Piece: Equatable {
     self.figure = figure
   }
 }
-
-extension Piece.Color {
-  var opposite: Self {
-    switch self {
-    case .white:
-      return .black
-
-    case .black:
-      return .white
-    }
-  }
-}

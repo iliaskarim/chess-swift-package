@@ -148,7 +148,8 @@ extension Board: CustomStringConvertible {
          state = .drawGame
       }
     } else if isCheckmate {
-      state = "\((moveColor == .black ? Piece.Color.white : Piece.Color.black).description.capitalized) \(String.wins)"
+      let oppositeColor: Piece.Color = moveColor == .black ? .white : .black
+      state = "\(oppositeColor.description.capitalized) \(String.wins)"
     } else if isNoMovePossible {
       state = .drawGame
     } else {
@@ -177,19 +178,13 @@ extension Notation: CustomStringConvertible {
       }
       return victor == .black ? .blackVictory : .whiteVictory
 
-    case let .gameplay(gameplay):
-      return "\(gameplay)"
+    case let .play(play, punctuation):
+      return "\(play)\(punctuation?.description ?? "")"
     }
   }
 }
 
-extension Notation.Gameplay: CustomStringConvertible {
-  var description: String {
-    "\(play)\(punctuation?.description ?? "")"
-  }
-}
-
-extension Notation.Gameplay.Play: CustomStringConvertible {
+extension Notation.Play: CustomStringConvertible {
   var description: String {
     switch self {
     case let .castle(castle):
@@ -209,7 +204,7 @@ extension Notation.Gameplay.Play: CustomStringConvertible {
   }
 }
 
-extension Notation.Gameplay.Punctuation: CustomStringConvertible {
+extension Notation.Punctuation: CustomStringConvertible {
   var description: String {
     rawValue
   }
@@ -372,14 +367,14 @@ public struct Game {
       throw InvalidNotation.unparseable(notation: notationString)
     }
 
-    guard case let .gameplay(gameplay) = notation else {
+    guard case let .play(play, punctuation) = notation else {
       board.moves += [notation]
       return
     }
 
     let mutations: [Board.Mutation]
     
-    switch gameplay.play {
+    switch play {
     case let .castle(castle):
       guard !board.isCheck(color: board.moveColor) else {
         throw IllegalMove.cannotCastle(.inCheck)
@@ -473,7 +468,7 @@ public struct Game {
     let isCheckmate = mutatedBoard.isCheckmate
     
     // Validate punctuation parsed from input notation.
-    switch gameplay.punctuation {
+    switch punctuation {
     case .check:
       guard isCheck else {
         throw InvalidNotation.badPunctuation(.isNotCheck)
