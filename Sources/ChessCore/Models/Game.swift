@@ -52,9 +52,9 @@ private extension Board {
   var isNoMovePossible: Bool {
     !pieces.filter { _, piece in
       piece.color == moveColor
-    }.flatMap { square, _ in
+    }.flatMap { square, piece in
       (moves(from: square, isCapture: false) + moves(from: square, isCapture: true)).map { targetSquare in
-        Mutation(originSquare: square, targetSquare: targetSquare, promotion: nil)
+        mutatation(for: piece, from: square, to: targetSquare)
       }
     }.contains { mutation in
       mutatedBoard(mutations: [mutation]) != nil
@@ -81,22 +81,46 @@ private extension Board {
         pieces[square] != nil
       }
 
-      // Non-capture moves can move a piece up to the first obstruction in its path or the end of the path if its unobstructed.
+      // Non-capture moves can move a piece up to the first obstruction in its path or the end of the path if it's unobstructed.
       guard isCapture else {
         return path.prefix(upTo: obstruction?.0 ?? path.endIndex)
       }
 
+      // En passant captures are the only captures where the captured piece is not in the capture path.
       guard let obstruction, pieces[obstruction.1]!.color != piece.color else {
         guard let enPassant, piece.figure == .pawn, path.first == enPassant + piece.forwardUnitVector else {
           return []
         }
 
-        // En passant captures are the only captures where the captured piece is not in the capture path.
         return [path.first!]
       }
 
       // All other captures take the first opposing piece in the path.
       return path[obstruction.0 ..< obstruction.0 + 1]
+    }
+  }
+
+  func mutatation(for piece: Piece, from originSquare: Square, to targetSquare: Square) -> Mutation {
+    { board in
+      // Move piece.
+      var pieces = board.pieces
+      pieces[originSquare] = nil
+      pieces[targetSquare] = piece
+
+      // Capture en passant.
+      if let enPassant = board.enPassant, piece.figure == .pawn, targetSquare == enPassant + piece.forwardUnitVector {
+        pieces[enPassant] = nil
+      }
+
+      // Check for pawns that can be captured en passant.
+      let enPassant: Square?
+      if piece.figure == .pawn, abs(originSquare.rank.rawValue - targetSquare.rank.rawValue) == 2 {
+        enPassant = targetSquare
+      } else {
+        enPassant = nil
+      }
+
+      return Board(pieces: pieces, enPassant: enPassant)
     }
   }
 
@@ -106,28 +130,8 @@ private extension Board {
         return nil
       }
 
-      // Replace pieces.
-      let piece = board.pieces[mutation.originSquare]!
-      var pieces = board.pieces
-      pieces[mutation.originSquare] = nil
-      if let enPassant = board.enPassant, piece.figure == .pawn, mutation.targetSquare == enPassant + piece.forwardUnitVector {
-        pieces[enPassant] = nil
-      }
-      pieces[mutation.targetSquare] = Piece(color: piece.color, figure: mutation.promotion ?? piece.figure)
-
-      // Check for pawns that can be captured en passant.
-      let enPassant: Square?
-      if piece.figure == .pawn, abs(mutation.originSquare.rank.rawValue - mutation.targetSquare.rank.rawValue) == 2 {
-        enPassant = mutation.targetSquare
-      } else {
-        enPassant = nil
-      }
-
-      // Update touched squares.
-      let squaresTouched = squaresTouched + (squaresTouched.contains(mutation.targetSquare) ? [] : [mutation.targetSquare])
-      let mutatedBoard = Board(pieces: pieces, enPassant: enPassant, squaresTouched: squaresTouched)
-
-      // Forbid moving into check.
+      // To move into check is forbidden.
+      let mutatedBoard = mutation(board)
       guard !mutatedBoard.isCheck(color: moveColor) else {
         return nil
       }
@@ -376,11 +380,14 @@ public struct Game {
     
     switch play {
     case let .castle(castle):
+      // Cannot castle in check.
       guard !board.isCheck(color: board.moveColor) else {
         throw IllegalMove.cannotCastle(.inCheck)
       }
       
       let rank: Square.Rank = board.moveColor == .black ? .eight : .one
+
+      // Squares between king and rook must be free.
       guard !(castle == .long ? [.b, .c, .d] : [.f, .g]).map({ file in
         Square(file: file, rank: rank)
       }).contains(where: board.pieces.keys.contains) else {
@@ -389,22 +396,40 @@ public struct Game {
       
       let kingOriginSquare = Square(file: .e, rank: rank)
       let rookOriginSquare = Square(file: castle == .long ? .a : .h, rank: rank)
+
+      // Both king and rook must be unmoved.
       for (figure, square) in [Piece.Figure.king: kingOriginSquare, Piece.Figure.rook: rookOriginSquare] {
         guard board.pieces[square] == .init(color: board.moveColor, figure: figure) else {
           throw IllegalMove.cannotCastle(.pieceOutOfPosition(figure: figure))
         }
         
-        guard !board.squaresTouched.contains(square) else {
+        guard !board.moves.contains(where: { notation in
+          notation.description.contains(square.description)
+        }) else {
           throw IllegalMove.cannotCastle(.pieceMoved(figure: figure))
         }
       }
       
+      let kingTargetSquare = Square(file: castle == .long ?.c : .g, rank: rank)
       let rookTargetSquare = Square(file: castle == .long ? .d : .f, rank: rank)
-      mutations = [
-        (originSquare: kingOriginSquare, targetSquare: rookTargetSquare, promotion: nil),
-        (originSquare: rookTargetSquare, targetSquare: .init(file: castle == .long ?.c : .g, rank: rank), promotion: nil),
-        (originSquare: rookOriginSquare, targetSquare: rookTargetSquare, promotion: nil)
-      ]
+
+      // King must move over the rook's target square without moving into check.
+      mutations = [{ board in
+        var pieces = board.pieces
+        pieces[kingOriginSquare] = nil
+        pieces[rookTargetSquare] = .init(color: board.moveColor, figure: .king)
+        return Board(pieces: pieces)
+      }, { board in
+        var pieces = board.pieces
+        pieces[rookTargetSquare] = nil
+        pieces[kingTargetSquare] = .init(color: board.moveColor, figure: .king)
+        return Board(pieces: pieces)
+      }, { board in
+        var pieces = board.pieces
+        pieces[rookOriginSquare] = nil
+        pieces[rookTargetSquare] = .init(color: board.moveColor, figure: .rook)
+        return Board(pieces: pieces)
+      }]
       
     case let .translation(disambiguationFile, disambiguationRank, figure, isCapture, promotion, targetSquare):
       let eligibleSquares: [Square] = board.pieces.compactMap { square, piece in
@@ -453,8 +478,9 @@ public struct Game {
           throw IllegalMove.cannotPromoteToFigure
         }
       }
-      
-      mutations = [(originSquare: originSquare, targetSquare: targetSquare, promotion: promotion)]
+
+      let piece = Piece(color: board.moveColor, figure: promotion ?? figure)
+      mutations = [board.mutatation(for: piece, from: originSquare, to: targetSquare)]
     }
     
     guard var mutatedBoard = board.mutatedBoard(mutations: mutations) else {
