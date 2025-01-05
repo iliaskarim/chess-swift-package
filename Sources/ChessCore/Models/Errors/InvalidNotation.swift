@@ -7,8 +7,8 @@ enum InvalidNotation: Error {
     case isNotCheckmate
   }
 
-  case ambiguous
-  case badMove
+  case ambiguous([String])
   case badPunctuation(_: BadPunctuation)
+  case illegalMove
   case unparseable(notation: String)
 }

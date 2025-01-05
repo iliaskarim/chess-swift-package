@@ -1,0 +1,7 @@
+--swiftversion 5.10
+--disable blankLinesAroundMark
+--disable wrapMultilineStatementBraces
+--commas inline
+--importgrouping testable-last
+--indent 2
+--propertytypes explicit
