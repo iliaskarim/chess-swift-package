@@ -4,10 +4,10 @@
 /// A model representing a square on a chess board.
 public struct Square: Hashable {
   /// File
-  enum File: Int, CaseIterable {
+  public enum File: Int, CaseIterable {
     case a = 1, b, c, d, e, f, g, h
 
-    internal init?(_ character: Character) {
+    init?(_ character: Character) {
       guard let ascii = character.asciiValue else {
         return nil
       }
@@ -16,10 +16,10 @@ public struct Square: Hashable {
   }
 
   /// Rank
-  enum Rank: Int, CaseIterable {
+  public enum Rank: Int, CaseIterable {
     case one = 1, two, three, four, five, six, seven, eight
 
-    internal init?(_ character: Character) {
+    init?(_ character: Character) {
       guard let int = Int(String(character)) else {
         return nil
       }
@@ -27,21 +27,57 @@ public struct Square: Hashable {
     }
   }
 
-  internal let file: File
+  /// File
+  public let file: File
 
-  internal let rank: Rank
-  
+  /// Rank
+  public let rank: Rank
+
   /// Designated initializer
-  init(file: File, rank: Rank) {
+  /// - Parameters:
+  ///   - file: file
+  ///   - rank: rank
+  public init(file: File, rank: Rank) {
     self.file = file
     self.rank = rank
-  } 
-  
+  }
+
   /// Convenience initializer
-  public init?(_ string: String) {
-    guard let file = string.first.map(File.init) ?? nil, let rank = string.last.map(Rank.init) ?? nil, string.count == 2 else {
+  /// - Parameter string: notation
+  public init?(_ notation: String) {
+    guard let file = notation.first.map(File.init) ?? nil,
+          let rank = notation.last.map(Rank.init) ?? nil,
+          notation.count == 2 else {
       return nil
     }
     self.init(file: file, rank: rank)
+  }
+}
+
+extension Square {
+  static func + (lhs: Self, rhs: Vector) -> Self? {
+    guard let file = File(rawValue: lhs.file.rawValue + rhs.files),
+          let rank = Rank(rawValue: lhs.rank.rawValue + rhs.ranks) else {
+      return nil
+    }
+    return .init(file: file, rank: rank)
+  }
+}
+
+extension Square: CustomStringConvertible {
+  public var description: String {
+    "\(file)\(rank)"
+  }
+}
+
+extension Square.File: CustomStringConvertible {
+  public var description: String {
+    String(Character(UnicodeScalar(rawValue + 96)!))
+  }
+}
+
+extension Square.Rank: CustomStringConvertible {
+  public var description: String {
+    String(rawValue)
   }
 }

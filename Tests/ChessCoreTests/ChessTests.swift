@@ -17,26 +17,59 @@ final class ChessTests: XCTestCase {
   }
 
   func testScholarsMate() throws {
-    var game = Game()
-    try game.move("e4")
-    try game.move("e5")
-    try game.move("Qh5")
-    try game.move("Nc6")
-    try game.move("Bc4")
-    try game.move("Nf6")
+    let game = Game()
+    try ["e4", "e5", "Qh5", "Nc6", "Bc4", "Nf6"].forEach(game.move)
+
+    XCTAssertThrowsError(try game.move("Qxf7")) { error in
+      guard case let .badPunctuation(correctPunctuation) = error as? InvalidNotation, correctPunctuation == "#" else {
+        XCTFail("Expected .badPunctuation with correctPunctuation == \"#\", but got \(error).")
+        return
+      }
+    }
+
+    XCTAssertThrowsError(try game.move("Qxf7+")) { error in
+      guard case let .badPunctuation(correctPunctuation) = error as? InvalidNotation, correctPunctuation == "#" else {
+        XCTFail("Expected .badPunctuation with correctPunctuation == \"#\", but got \(error).")
+        return
+      }
+    }
+
     try game.move("Qxf7#")
-    print(game)
+
     XCTAssertTrue(game.isGameOver)
+    guard case let .winner(color, isByResignation) = game.status, color == .white, !isByResignation else {
+      XCTFail("Expected game.status to be .winner with color == .white and isByResignation == false, but got \(game.status).")
+      return
+    }
   }
 
   func testStalemate() throws {
-    var game = Game(board: .init(pieces: [
+    let game = Game(board: [
       .init("e5")!: .init(color: .white, figure: .king),
       .init("e8")!: .init(color: .black, figure: .king),
       .init("e7")!: .init(color: .white, figure: .pawn)
-    ]))
+    ])
+
+    XCTAssertThrowsError(try game.move("Ke6+")) { error in
+      guard case let .badPunctuation(correctPunctuation) = error as? InvalidNotation, correctPunctuation == "" else {
+        XCTFail("Expected .badPunctuation with correctPunctuation == \"\", but got \(error).")
+        return
+      }
+    }
+
+    XCTAssertThrowsError(try game.move("Ke6#")) { error in
+      guard case let .badPunctuation(correctPunctuation) = error as? InvalidNotation, correctPunctuation == "" else {
+        XCTFail("Expected .badPunctuation with correctPunctuation == \"\", but got \(error).")
+        return
+      }
+    }
+
     try game.move("Ke6")
-    print(game)
+
     XCTAssertTrue(game.isGameOver)
+    guard case let .draw(isStalemate) = game.status else {
+      XCTFail("Expected game.status to be .draw with stalemate == true, but got \(game.status).")
+      return
+    }
   }
 }

@@ -1,6 +1,6 @@
 disabled_rules:
   - identifier_name
-  - trailing_comma
+  - leading_whitespace
 
-cyclomatic_complexity: 50
-function_body_length: 80
+line_length:
+  error: 130
