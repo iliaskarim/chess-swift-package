@@ -5,38 +5,84 @@ final class ChessTests: XCTestCase {
   func testFirstMoves() throws {
     let game = Game()
 
-    XCTAssertTrue([.init(notation: "a3")!, .init(notation: "c3")!].allSatisfy(game.board.moves(from: .init(notation: "b1")!).contains))
-    XCTAssertTrue([.init(notation: "f3")!, .init(notation: "h3")!].allSatisfy(game.board.moves(from: .init(notation: "g1")!).contains))
+    XCTAssertEqual(Set(game.board.moves(from: .init(notation: "b1")!)), Set([.init(notation: "a3")!, .init(notation: "c3")!]))
+    XCTAssertEqual(Set(game.board.moves(from: .init(notation: "g1")!)), Set([.init(notation: "f3")!, .init(notation: "h3")!]))
 
-    for file in Square.File.allCases {
-      XCTAssertTrue([
+    Square.File.allCases.forEach { file in
+      XCTAssertEqual(Set(game.board.moves(from: .init(file: file, rank: .two))), Set([
         .init(file: file, rank: .three),
         .init(file: file, rank: .four)
-      ].allSatisfy(game.board.moves(from: .init(file: file, rank: .two)).contains))
+      ]))
     }
   }
 
   func testScholarsMate() throws {
-    var game = Game()
-    try game.move(notation: "e4")
-    try game.move(notation: "e5")
-    try game.move(notation: "Qh5")
-    try game.move(notation: "Nc6")
-    try game.move(notation: "Bc4")
-    try game.move(notation: "Nf6")
+    let game = Game()
+    try ["e4", "e5", "Qh5", "Nc6", "Bc4", "Nf6"].forEach(game.move)
+
+    XCTAssertThrowsError(try game.move(notation: "Qxf7")) { error in
+      if case let .badPunctuation(correctPunctuation) = error as? InvalidNotation {
+        XCTAssertEqual(correctPunctuation, "#", "Expected correct punctuation to be \"#\"")
+      } else {
+        XCTAssert(false, "Expected error to be `InvalidNotation.badPunctuation`.")
+      }
+    }
+
+    XCTAssertThrowsError(try game.move(notation: "Qxf7+")) { error in
+      if case let .badPunctuation(correctPunctuation) = error as? InvalidNotation {
+        XCTAssertEqual(correctPunctuation, "#", "Expected correct punctuation to be \"#\"")
+      } else {
+        XCTAssert(false, "Expected error to be `InvalidNotation.badPunctuation`.")
+      }
+    }
+
     try game.move(notation: "Qxf7#")
+
+    XCTAssert(game.isGameOver, "Expected game to be over.")
+
+    if case let .winner(color, isByResignation) = game.status {
+      XCTAssertEqual(color, .white, "Expected color to be `.white`.")
+      XCTAssert(!isByResignation, "Expected isByResignation to be false.")
+    } else {
+      XCTAssert(false, "Expected game status to be `.winner`.")
+    }
+
     print(game)
-    XCTAssertTrue(game.isGameOver)
   }
 
   func testStalemate() throws {
-    var game = Game(board: .init(pieces: [
+    let game = Game(board: [
       .init(notation: "e5")!: .init(color: .white, figure: .king),
       .init(notation: "e8")!: .init(color: .black, figure: .king),
       .init(notation: "e7")!: .init(color: .white, figure: .pawn)
-    ]))
+    ])
+
+    XCTAssertThrowsError(try game.move(notation: "Ke6+")) { error in
+      if case let .badPunctuation(correctPunctuation) = error as? InvalidNotation, correctPunctuation == "" {
+        XCTAssertEqual(correctPunctuation, "", "Expected correct punctuation to be \"\"")
+      } else {
+        XCTAssert(false, "Expected error to be `InvalidNotation.badPunctuation`.")
+      }
+    }
+
+    XCTAssertThrowsError(try game.move(notation: "Ke6#")) { error in
+      if case let .badPunctuation(correctPunctuation) = error as? InvalidNotation, correctPunctuation == "" {
+        XCTAssertEqual(correctPunctuation, "", "Expected correct punctuation to be \"\"")
+      } else {
+        XCTAssert(false, "Expected error to be `InvalidNotation.badPunctuation`.")
+      }
+    }
+
     try game.move(notation: "Ke6")
+
+    XCTAssert(game.isGameOver, "Expected game to be over.")
+
+    if case let .draw(isStalemate) = game.status {
+      XCTAssert(isStalemate, "Expected stalemate.")
+    } else {
+      XCTAssert(false, "Expected game status to be `.draw`.")
+    }
+
     print(game)
-    XCTAssertTrue(game.isGameOver)
   }
 }

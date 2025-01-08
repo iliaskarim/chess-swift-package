@@ -10,8 +10,12 @@ enum Notation {
     }
 
     case castle(castle: Castle)
-    case translation(originFile: Square.File?, originRank: Square.Rank?, figure: Piece.Figure, isCapture: Bool, 
-                     promotion: Piece.Figure?, targetSquare: Square)
+    case translation(originFile: Square.File?,
+                     originRank: Square.Rank?,
+                     figure: Piece.Figure,
+                     isCapture: Bool,
+                     promotion: Piece.Figure?,
+                     targetSquare: Square)
   }
 
   enum Punctuation: String {
@@ -91,5 +95,52 @@ enum Notation {
                      punctuation: punctuation)
       }
     }
+  }
+}
+
+extension Notation: CustomStringConvertible {
+  var description: String {
+    switch self {
+    case let .end(victor):
+      switch victor {
+      case .black:
+        .blackVictory
+
+      case .white:
+        .whiteVictory
+
+      case .none:
+        .draw
+      }
+
+    case let .play(play, punctuation):
+      "\(play)\(punctuation?.description ?? "")"
+    }
+  }
+}
+
+extension Notation.Play: CustomStringConvertible {
+  var description: String {
+    switch self {
+    case let .castle(castle):
+      switch castle {
+      case .long:
+        return .castleLong
+
+      case .short:
+        return .castleShort
+      }
+
+    case let .translation(originFile, originRank, figure, isCapture, promotion, targetSquare):
+      let disambiguation = "\(originFile?.description ?? "")\(originRank?.description ?? "")"
+      let promotion = promotion.map(\.rawValue).map(String.promotion.appending) ?? ""
+      return "\(figure.rawValue)\(disambiguation)\(isCapture ? .capture : "")\(targetSquare)\(promotion)"
+    }
+  }
+}
+
+extension Notation.Punctuation: CustomStringConvertible {
+  var description: String {
+    rawValue
   }
 }

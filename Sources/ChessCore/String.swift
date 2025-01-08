@@ -7,7 +7,6 @@ extension String {
   static let draw = "1/2-1/2"
   static let drawGame = "Draw game"
   static let promotion = "="
-  static let stalemate = "Stalemate"
   static let toMove = "to move"
   static let whiteVictory = "1-0"
   static let wins = "wins"
