@@ -1,19 +1,16 @@
-// swift-tools-version:5.3
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
   name: "ChessCore",
+  platforms: [
+    .macOS(.v14)
+  ],
   products: [
-    .library(
-      name: "ChessCore",
-      targets: ["ChessCore"]),
+    .library(name: "ChessCore", targets: ["ChessCore"])
   ],
   targets: [
-    .target(
-      name: "ChessCore",
-      dependencies: []),
-    .testTarget(
-      name: "ChessCoreTests",
-      dependencies: ["ChessCore"]),
+    .target(name: "ChessCore", dependencies: []),
+    .testTarget(name: "ChessCoreTests", dependencies: ["ChessCore"])
   ]
 )

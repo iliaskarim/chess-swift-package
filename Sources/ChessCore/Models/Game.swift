@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: -
 private extension Notation.Play {
@@ -29,7 +30,7 @@ private extension Notation.Play {
 /// A model representing a chess game.
 ///
 /// Chess is a board game played between two players.
-public class Game {
+public class Game: ObservableObject {
   /// A model representing a game state.
   public enum Status: Equatable {
     public enum Draw {
@@ -73,7 +74,7 @@ public class Game {
   }
 
   /// Game board
-  public private(set) var board: Board
+  @Published public private(set) var board: Board
 
   /// Game over
   public var isGameOver: Bool {
