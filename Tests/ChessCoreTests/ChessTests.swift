@@ -77,8 +77,8 @@ final class ChessTests: XCTestCase {
 
     XCTAssert(game.isGameOver, "Expected game to be over.")
 
-    if case let .draw(isStalemate) = game.status {
-      XCTAssert(isStalemate, "Expected stalemate.")
+    if case let .draw(draw) = game.status {
+      XCTAssert(draw == .byStalemate, "Expected draw to be `.byStalemate`.")
     } else {
       XCTAssert(false, "Expected game status to be `.draw`.")
     }

@@ -31,30 +31,45 @@ private extension Notation.Play {
 /// Chess is a board game played between two players.
 public class Game {
   /// A model representing a game state.
-  public enum Status {
+  public enum Status: Equatable {
+    public enum Draw {
+      case byAgreement
+      case byFiftyMoveRule
+      case byStalemate
+    }
+
     case winner(color: Piece.Color, isByResignation: Bool)
-    case draw(isStalemate: Bool)
+    case draw(Draw)
     case toMove(Piece.Color)
   }
 
   /// Game state
   public var status: Status {
-    switch (moves.last, board.isCheckmate, board.isNoMovePossible) {
-    case (.some(.end(.some)), _, _), (_, true, _):
-      .winner(color: moves.last.flatMap { move in
-        if case let .end(.some(color)) = move {
-          color
-        } else {
-          nil
-        }
-      } ?? moveColor.opposite, isByResignation: !board.isCheckmate)
-
-    case (.some(.end(nil)), _, _), (_, _, true):
-      .draw(isStalemate: board.isNoMovePossible)
-
-    default:
-      .toMove(moveColor)
+    if case let .end(victor) = moves.last {
+      return victor.flatMap { color in
+        .winner(color: color, isByResignation: true)
+      } ?? .draw(.byAgreement)
     }
+
+    if board.isCheckmate {
+      return .winner(color: moveColor.opposite, isByResignation: false)
+    }
+
+    if board.isNoMovePossible {
+      return .draw(.byStalemate)
+    }
+
+    if moves.count >= 50, !moves.suffix(50).contains(where: { move in
+      if case let .play(.translation(_, _, figure, isCapture, _, _), _) = move, figure == .pawn || isCapture {
+        true
+      } else {
+        false
+      }
+    }) {
+      return .draw(.byFiftyMoveRule)
+    }
+
+    return .toMove(moveColor)
   }
 
   /// Game board
@@ -71,7 +86,7 @@ public class Game {
   private var moves = [Notation]()
 
   /// Move
-  /// - Parameter notation: move notation
+  /// - Parameter notation: Move notation
   public func move(notation: String) throws {
     guard let notation = Notation(notation: notation) else {
       throw InvalidNotation.unparseable
@@ -243,6 +258,21 @@ extension Game.Status: CustomStringConvertible {
 
     case let .toMove(color):
       "\(color.description.capitalized) \(String.toMove)"
+    }
+  }
+}
+
+extension Game.Status.Draw: CustomStringConvertible {
+  public var description: String {
+    switch self {
+    case .byAgreement:
+      "\(String.drawBy) \(String.agreement)"
+
+    case .byFiftyMoveRule:
+      "\(String.drawBy) \(String.fiftyMoveRule)"
+
+    case .byStalemate:
+      "\(String.drawBy) \(String.stalemate)"
     }
   }
 }
